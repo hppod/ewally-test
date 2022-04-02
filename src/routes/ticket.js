@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
 
-router.get('', require('../services/ticket/check'))
+router.get('/:digitableLine', require('../services/ticket/check'))
 
 module.exports = router
