@@ -1,4 +1,4 @@
-const { addDays, formatISO } = require("../../utils/date")
+const { addDays, formatISO } = require("../../../utils/date")
 
 const LENGTHS_BLOCKS = {
     First: 10,
@@ -9,37 +9,28 @@ const LENGTHS_BLOCKS = {
 }
 const BASE_DATE = "10/07/1997"
 
-module.exports = async (req, res) => {
-    try {
-        const { isValid, message, digitableLine } = getDigitableLine(req.params)
+const assembleInformationsByBank = digitableLine => {
+    const separatedDigitableLine = separateDigitableLine(digitableLine)
+    const date = calculateExpirationDateFactor(separatedDigitableLine)
+    const blocks = [separatedDigitableLine[0], separatedDigitableLine[1], separatedDigitableLine[2]]
+    const dvs = checkValidatorDigitModule10(blocks)
+    const { barCode, value } = assembleBarCode(separatedDigitableLine)
 
-        if (!isValid) {
-            return res.status(400).json({ message: message })
-        }
-
-        const separatedDigitableLine = separateDigitableLine(digitableLine)
-        console.log(separatedDigitableLine)
-
-        const date = calculateExpirationDateFactor(separatedDigitableLine)
-        console.log(date)
-
-        const blocks = [separatedDigitableLine[0], separatedDigitableLine[1], separatedDigitableLine[2]]
-        const dvs = checkValidatorDigitModule10(blocks)
-        console.log(dvs)
-
-        const { barCode, value } = assembleBarCode(separatedDigitableLine)
-        console.log(barCode)
-        console.log(barCode.length)
-
-        return res.status(200).json({
-            barCode: barCode,
-            amount: value,
-            expirationDate: date
-        })
-    } catch (error) {
-        return res.status(500).json({ message: error.message, stack: error.stack })
+    return {
+        barCode: barCode,
+        amount: value,
+        expirationDate: date
     }
 }
+
+// module.exports = async (req, res) => {
+//     try {
+//         const { isValid, message, digitableLine } = getDigitableLine(req.params)
+
+//     } catch (error) {
+//         return res.status(500).json({ message: error.message, stack: error.stack })
+//     }
+// }
 
 const getDigitableLine = params => {
     return verifyDigitableLine(params.digitableLine)
@@ -214,4 +205,8 @@ const numberToReal = number => {
     const real = number.substr(0, number.length - 2)
     const cents = number.substr(number.length - 2, 2)
     return Number(`${real}.${cents}`)
+}
+
+module.exports = {
+    assembleInformationsByBank
 }

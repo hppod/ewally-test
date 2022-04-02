@@ -8,46 +8,82 @@ const LENGTHS_BLOCKS = {
     FreeSpace: 25
 }
 
-module.exports = async (req, res) => {
-    try {
-        const { digitableLine } = req.params
-        let messageError = null
-
-        if (digitableLine.length > 48) {
-            messageError = 'digitable line is incorrect, is longer'
-        } else if (digitableLine.length < 48) {
-            messageError = 'digitable line is incorrect, is shorter'
-        } else {
-            const { possibleDvs, blocks, digitableLineWithoutDvs } = removeDvsFromDigitableLine(digitableLine)
-            const { valueReference, module } = identifyValueReferenceAndModule(digitableLineWithoutDvs)
-            identifySegment(digitableLineWithoutDvs)
-
-            if (checkIfDvsItsCorrect({
-                digitableLineBreaked: blocks,
-                module: module,
-                possibleDvs: possibleDvs
-            })) {
-                const response = assembleInformationsByDigitableLine({
-                    digitableLine: digitableLineWithoutDvs,
-                    module: module,
-                    valueReference: valueReference
-                })
-
-                if (response) {
-                    return res.status(200).json(response)
-                } else {
-                    messageError = 'dv bar code is incorrect'
-                }
-            } else {
-                messageError = 'dv is incorrect'
-            }
-        }
-
-        return res.status(400).json({ message: messageError })
-    } catch (error) {
-        return res.status(500).json({ message: error.message, stack: error.stack })
+const assembleInformationsByCovenant = digitableLine => {
+    const response = {
+        results: null,
+        message: 'ok',
+        isValid: true
     }
+
+    const { possibleDvs, blocks, digitableLineWithoutDvs } = removeDvsFromDigitableLine(digitableLine)
+    const { valueReference, module } = identifyValueReferenceAndModule(digitableLineWithoutDvs)
+    identifySegment(digitableLineWithoutDvs)
+
+    if (checkIfDvsItsCorrect({
+        digitableLineBreaked: blocks,
+        module: module,
+        possibleDvs: possibleDvs
+    })) {
+        const results = assembleInformationsByDigitableLine({
+            digitableLine: digitableLineWithoutDvs,
+            module: module,
+            valueReference: valueReference
+        })
+
+        if (results) {
+            response.results = results
+        } else {
+            response.message = 'dv bar code is incorrect'
+            response.isValid = false
+        }
+    } else {
+        response.message = 'dv is incorrect'
+        response.isValid = false
+    }
+
+    return response
 }
+
+// module.exports = async (req, res) => {
+//     try {
+//         const { digitableLine } = req.params
+//         let messageError = null
+
+//         if (digitableLine.length > 48) {
+//             messageError = 'digitable line is incorrect, is longer'
+//         } else if (digitableLine.length < 48) {
+//             messageError = 'digitable line is incorrect, is shorter'
+//         } else {
+//             const { possibleDvs, blocks, digitableLineWithoutDvs } = removeDvsFromDigitableLine(digitableLine)
+//             const { valueReference, module } = identifyValueReferenceAndModule(digitableLineWithoutDvs)
+//             identifySegment(digitableLineWithoutDvs)
+
+//             if (checkIfDvsItsCorrect({
+//                 digitableLineBreaked: blocks,
+//                 module: module,
+//                 possibleDvs: possibleDvs
+//             })) {
+//                 const response = assembleInformationsByDigitableLine({
+//                     digitableLine: digitableLineWithoutDvs,
+//                     module: module,
+//                     valueReference: valueReference
+//                 })
+
+//                 if (response) {
+//                     return res.status(200).json(response)
+//                 } else {
+//                     messageError = 'dv bar code is incorrect'
+//                 }
+//             } else {
+//                 messageError = 'dv is incorrect'
+//             }
+//         }
+
+//         return res.status(400).json({ message: messageError })
+//     } catch (error) {
+//         return res.status(500).json({ message: error.message, stack: error.stack })
+//     }
+// }
 
 const removeDvsFromDigitableLine = digitableLine => {
     const blocks = breakDigitableLine(digitableLine)
@@ -244,4 +280,8 @@ const assembleExpirationDate = digitableLineWithoutDvBlocks => {
     const possibleExpirationDate = `${freeSpace.substr(0, 4)}-${freeSpace.substr(4, 2)}-${freeSpace.substr(6, 2)}`
     const dateIsValid = new Date(possibleExpirationDate)
     return dateIsValid instanceof Date ? false : possibleExpirationDate
+}
+
+module.exports = {
+    assembleInformationsByCovenant
 }
