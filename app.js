@@ -19,6 +19,4 @@ if (PORT) {
     console.log('Config port API on .env')
 }
 
-module.exports = {
-    app
-}
+module.exports = app
