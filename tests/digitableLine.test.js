@@ -76,4 +76,24 @@ describe('Digitable Line', () => {
         })
         expect(result).toMatchObject(OBJ_EXPECTED)
     })
+
+    it('Remove special characters from string and return values', () => {
+        const result = index.removeSpecialCharacters('123654.2665')
+        expect(result).toEqual('1236542665')
+    })
+
+    it('Remove special characters from string and return null', () => {
+        const result = index.removeSpecialCharacters('.,-')
+        expect(result).toEqual('')
+    })
+
+    it('Check if has letters on digitable line - false', () => {
+        const result = index.checkIfHasLetters('982134972')
+        expect(result).toEqual(false)
+    })
+
+    it('Check if has letters on digitable line - true', () => {
+        const result = index.checkIfHasLetters('9821349ds72')
+        expect(result).toEqual(true)
+    })
 })

@@ -37,8 +37,24 @@ const calculateModule11 = ({ digitableLine, multiplier = 2, sumBlock = 0 }) => {
     }
 }
 
+const removeSpecialCharacters = digitableLine => {
+    return digitableLine.replace(/[^\w\s]/gi, '')
+}
+
+const checkIfHasLetters = digitableLine => {
+    const letters = []
+
+    for (const char of digitableLine) {
+        letters.push(isNaN(Number(char)))
+    }
+
+    return letters.some(isLetter => isLetter)
+}
+
 module.exports = {
     separateDigitableLine,
     calculateModule10,
-    calculateModule11
+    calculateModule11,
+    removeSpecialCharacters,
+    checkIfHasLetters
 }

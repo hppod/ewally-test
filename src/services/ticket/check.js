@@ -1,3 +1,4 @@
+const { checkIfHasLetters, removeSpecialCharacters } = require("../../utils/digitableLine")
 const { assembleInformationsByBank } = require("./functions/boleto")
 const { assembleInformationsByCovenant } = require("./functions/convenio")
 
@@ -55,20 +56,6 @@ const verifyDigitableLine = digitableLine => {
 
 
     return response
-}
-
-const removeSpecialCharacters = digitableLine => {
-    return digitableLine.replace(/[^\w\s]/gi, '')
-}
-
-const checkIfHasLetters = digitableLine => {
-    const letters = []
-
-    for (const char of digitableLine) {
-        letters.push(isNaN(Number(char)))
-    }
-
-    return letters.some(isLetter => isLetter)
 }
 
 const assembleInformations = ({ digitableLine, type }) => {
