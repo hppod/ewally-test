@@ -1,3 +1,6 @@
+const { calculateModule10, calculateModule11 } = require("../../../utils/digitableLine")
+const { numberToReal } = require("../../../utils/numbers")
+
 const LENGTHS_BLOCKS = {
     ProductIdentification: 1,
     SegmentIdentification: 1,
@@ -44,47 +47,6 @@ const assembleInformationsByCovenant = digitableLine => {
     return response
 }
 
-// module.exports = async (req, res) => {
-//     try {
-//         const { digitableLine } = req.params
-//         let messageError = null
-
-//         if (digitableLine.length > 48) {
-//             messageError = 'digitable line is incorrect, is longer'
-//         } else if (digitableLine.length < 48) {
-//             messageError = 'digitable line is incorrect, is shorter'
-//         } else {
-//             const { possibleDvs, blocks, digitableLineWithoutDvs } = removeDvsFromDigitableLine(digitableLine)
-//             const { valueReference, module } = identifyValueReferenceAndModule(digitableLineWithoutDvs)
-//             identifySegment(digitableLineWithoutDvs)
-
-//             if (checkIfDvsItsCorrect({
-//                 digitableLineBreaked: blocks,
-//                 module: module,
-//                 possibleDvs: possibleDvs
-//             })) {
-//                 const response = assembleInformationsByDigitableLine({
-//                     digitableLine: digitableLineWithoutDvs,
-//                     module: module,
-//                     valueReference: valueReference
-//                 })
-
-//                 if (response) {
-//                     return res.status(200).json(response)
-//                 } else {
-//                     messageError = 'dv bar code is incorrect'
-//                 }
-//             } else {
-//                 messageError = 'dv is incorrect'
-//             }
-//         }
-
-//         return res.status(400).json({ message: messageError })
-//     } catch (error) {
-//         return res.status(500).json({ message: error.message, stack: error.stack })
-//     }
-// }
-
 const removeDvsFromDigitableLine = digitableLine => {
     const blocks = breakDigitableLine(digitableLine)
     const dvs = blocks.filter(value => value.length === 1).map(n => Number(n))
@@ -104,11 +66,6 @@ const breakDigitableLine = digitableLine => {
         const start = sizeBlocks.slice(0, index).reduce((acc, value) => acc + value, 0)
         return digitableLine.substr(start, size)
     })
-}
-
-const breakInDigits = number => {
-    const digits = number.toString().split('')
-    return digits.map(n => Number(n))
 }
 
 const identifySegment = digitableLine => {
@@ -173,32 +130,6 @@ const checkIfDvsItsCorrect = ({ digitableLineBreaked, module, possibleDvs }) => 
     }
 
     return dvs.every((value, index) => value === possibleDvs[index])
-}
-
-const calculateModule10 = ({ digitableLine, multiplier = 2, sumBlock = 0 }) => {
-    for (let i = digitableLine.length; i >= 1; i--) {
-        const numberMultiplied = breakInDigits(Number(digitableLine[i - 1]) * multiplier)
-        sumBlock += numberMultiplied.reduce((acc, value) => acc + value, 0)
-        multiplier = multiplier === 2 ? 1 : 2
-    }
-
-    return {
-        multiplier: multiplier,
-        sumBlock: sumBlock
-    }
-}
-
-const calculateModule11 = ({ digitableLine, multiplier = 2, sumBlock = 0 }) => {
-    for (let i = digitableLine.length; i >= 1; i--) {
-        const numberMultiplied = Number(digitableLine[i - 1]) * multiplier
-        sumBlock += numberMultiplied
-        multiplier = multiplier === 9 ? 2 : multiplier + 1
-    }
-
-    return {
-        multiplier: multiplier,
-        sumBlock: sumBlock
-    }
 }
 
 const assembleInformationsByDigitableLine = ({ digitableLine, module, valueReference }) => {
@@ -266,13 +197,6 @@ const assembleAmount = (digitableLineWithoutDvBlocks, valueReference) => {
     }
 
     return false
-}
-
-const numberToReal = number => {
-    number = typeof number === 'string' ? number : number.toString()
-    const real = number.substr(0, number.length - 2)
-    const cents = number.substr(number.length - 2, 2)
-    return Number(`${real}.${cents}`)
 }
 
 const assembleExpirationDate = digitableLineWithoutDvBlocks => {

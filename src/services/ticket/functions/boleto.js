@@ -1,5 +1,6 @@
 const { addDays, formatISO } = require("../../../utils/date")
-const { separateDigitableLine } = require("../../../utils/digitableLine")
+const { numberToReal } = require("../../../utils/numbers")
+const { separateDigitableLine, calculateModule10, calculateModule11 } = require("../../../utils/digitableLine")
 
 const LENGTHS_BLOCKS = {
     First: 10,
@@ -96,32 +97,6 @@ const checkIfDvsItsCorrect = ({ digitableLineBreaked, module, possibleDvs }) => 
     return dvs.every((value, index) => value === possibleDvs[index])
 }
 
-const calculateModule10 = ({ digitableLine, multiplier = 2, sumBlock = 0 }) => {
-    for (let i = digitableLine.length; i >= 1; i--) {
-        const numberMultiplied = breakInDigits(Number(digitableLine[i - 1]) * multiplier)
-        sumBlock += numberMultiplied.reduce((acc, value) => acc + value, 0)
-        multiplier = multiplier === 2 ? 1 : 2
-    }
-
-    return {
-        multiplier: multiplier,
-        sumBlock: sumBlock
-    }
-}
-
-const calculateModule11 = ({ digitableLine, multiplier = 2, sumBlock = 0 }) => {
-    for (let i = digitableLine.length; i >= 1; i--) {
-        const numberMultiplied = Number(digitableLine[i - 1]) * multiplier
-        sumBlock += numberMultiplied
-        multiplier = multiplier === 9 ? 2 : multiplier + 1
-    }
-
-    return {
-        multiplier: multiplier,
-        sumBlock: sumBlock
-    }
-}
-
 const assembleInformationsByDigitableLine = digitableLine => {
     const { barCodeWithoutDv, possibleDv } = assembleBarCodeAndGetDv(digitableLine)
 
@@ -213,18 +188,6 @@ const assembleAmountAndExpirationDateFromDigitableLine = digitableLine => {
 
 const getExpirationDateFactor = fifthBlock => {
     return fifthBlock.substring(0, 4)
-}
-
-const breakInDigits = number => {
-    const digits = number.toString().split('')
-    return digits.map(n => Number(n))
-}
-
-const numberToReal = number => {
-    number = typeof number === 'string' ? number : number.toString()
-    const real = number.substr(0, number.length - 2)
-    const cents = number.substr(number.length - 2, 2)
-    return Number(`${real}.${cents}`)
 }
 
 module.exports = {
