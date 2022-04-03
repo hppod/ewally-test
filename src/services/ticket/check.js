@@ -38,25 +38,30 @@ const verifyDigitableLine = digitableLine => {
     }
 
     if (digitableLine) {
-        if (response.type === TYPES.Bank) {
-            if (digitableLine.length > 47) {
-                response.isValid = false
-                response.message = 'For bank slips, the typeable line must contain 47 characters. The entered typeable line contains extra characters'
-            } else if (digitableLine.length < 47) {
-                response.isValid = false
-                response.message = 'For bank slips, the typeable line must contain 47 characters. The entered typeable line contains fewer characters'
-            }
-        } else if (response.type === TYPES.Covenant) {
-            if (digitableLine.length > 48) {
-                response.isValid = false
-                response.message = 'For agreement slips, the typeable line must contain 48 characters. The entered typeable line contains extra characters'
-            } else if (digitableLine.length < 48) {
-                response.isValid = false
-                response.message = 'For agreement slips, the typeable line must contain 48 characters. The entered typeable line contains fewer characters'
-            }
-        } else {
+        if (checkIfHasLetters(digitableLine)) {
             response.isValid = false
-            response.message = 'It was not possible to set the type of your ticket because the typed line is incorrect'
+            response.message = 'The typeable line must consist of numbers only. The entered typeable line contains letters'
+        } else {
+            if (response.type === TYPES.Bank) {
+                if (digitableLine.length > 47) {
+                    response.isValid = false
+                    response.message = 'For bank slips, the typeable line must contain 47 characters. The entered typeable line contains extra characters'
+                } else if (digitableLine.length < 47) {
+                    response.isValid = false
+                    response.message = 'For bank slips, the typeable line must contain 47 characters. The entered typeable line contains fewer characters'
+                }
+            } else if (response.type === TYPES.Covenant) {
+                if (digitableLine.length > 48) {
+                    response.isValid = false
+                    response.message = 'For agreement slips, the typeable line must contain 48 characters. The entered typeable line contains extra characters'
+                } else if (digitableLine.length < 48) {
+                    response.isValid = false
+                    response.message = 'For agreement slips, the typeable line must contain 48 characters. The entered typeable line contains fewer characters'
+                }
+            } else {
+                response.isValid = false
+                response.message = 'It was not possible to set the type of your ticket because the typed line is incorrect'
+            }
         }
     } else {
         response.isValid = false
@@ -65,6 +70,16 @@ const verifyDigitableLine = digitableLine => {
 
 
     return response
+}
+
+const checkIfHasLetters = digitableLine => {
+    const letters = []
+
+    for (const char of digitableLine) {
+        letters.push(isNaN(Number(char)))
+    }
+
+    return letters.some(isLetter => isLetter)
 }
 
 const assembleInformations = ({ digitableLine, type }) => {
