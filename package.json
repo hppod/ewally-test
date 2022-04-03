@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "firstUse": "npm install && node app.js",
+    "start": "node app.js"
   },
   "repository": {
     "type": "git",
