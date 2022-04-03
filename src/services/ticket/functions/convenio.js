@@ -1,4 +1,4 @@
-const { calculateModule10, calculateModule11 } = require("../../../utils/digitableLine")
+const { calculateModule10, calculateModule11, separateDigitableLine } = require("../../../utils/digitableLine")
 const { numberToReal } = require("../../../utils/numbers")
 
 const LENGTHS_BLOCKS = {
@@ -48,7 +48,10 @@ const assembleInformationsByCovenant = digitableLine => {
 }
 
 const removeDvsFromDigitableLine = digitableLine => {
-    const blocks = breakDigitableLine(digitableLine)
+    const blocks = separateDigitableLine({
+        sizeBlocks: [11, 1, 11, 1, 11, 1, 11, 1],
+        digitableLine: digitableLine
+    })
     const dvs = blocks.filter(value => value.length === 1).map(n => Number(n))
     const data = blocks.filter(value => value.length > 1)
 
@@ -57,15 +60,6 @@ const removeDvsFromDigitableLine = digitableLine => {
         blocks: data,
         digitableLineWithoutDvs: data.join('')
     }
-}
-
-const breakDigitableLine = digitableLine => {
-    const sizeBlocks = [11, 1, 11, 1, 11, 1, 11, 1]
-
-    return sizeBlocks.map((size, index) => {
-        const start = sizeBlocks.slice(0, index).reduce((acc, value) => acc + value, 0)
-        return digitableLine.substr(start, size)
-    })
 }
 
 const identifySegment = digitableLine => {
