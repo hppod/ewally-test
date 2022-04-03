@@ -1,4 +1,5 @@
 const { addDays, formatISO } = require("../../../utils/date")
+const { separateDigitableLine } = require("../../../utils/digitableLine")
 
 const LENGTHS_BLOCKS = {
     First: 10,
@@ -10,118 +11,143 @@ const LENGTHS_BLOCKS = {
 const BASE_DATE = "10/07/1997"
 
 const assembleInformationsByBank = digitableLine => {
-    const separatedDigitableLine = separateDigitableLine(digitableLine)
-    const date = calculateExpirationDateFactor(separatedDigitableLine)
-    const blocks = [separatedDigitableLine[0], separatedDigitableLine[1], separatedDigitableLine[2]]
-    const dvs = checkValidatorDigitModule10(blocks)
-    const { barCode, value } = assembleBarCode(separatedDigitableLine)
-
-    return {
-        barCode: barCode,
-        amount: value,
-        expirationDate: date
-    }
-}
-
-// module.exports = async (req, res) => {
-//     try {
-//         const { isValid, message, digitableLine } = getDigitableLine(req.params)
-
-//     } catch (error) {
-//         return res.status(500).json({ message: error.message, stack: error.stack })
-//     }
-// }
-
-const getDigitableLine = params => {
-    return verifyDigitableLine(params.digitableLine)
-}
-
-const verifyDigitableLine = digitableLine => {
     const response = {
-        isValid: true,
+        results: null,
         message: 'ok',
-        digitableLine: digitableLine
+        isValid: true
     }
 
-    if (digitableLine) {
-        if (digitableLine.length > 47) {
+    const { possibleDvs, blocks } = getPossibleDvsFromDigitableLine(digitableLine)
+
+    if (checkIfDvsItsCorrect({
+        digitableLineBreaked: [blocks[2], blocks[1], blocks[0]],
+        module: 10,
+        possibleDvs: possibleDvs
+    })) {
+        const results = assembleInformationsByDigitableLine(blocks)
+
+        if (results) {
+            response.results = results
+        } else {
+            response.message = 'dv bar code is incorrect'
             response.isValid = false
-            response.message = 'digitable line incorrect, is longer'
-        } else if (digitableLine.length < 47) {
-            response.isValid = false
-            response.message = 'digitable line incorrect, is shorter'
         }
     } else {
+        response.message = 'dv blocks is incorrect'
         response.isValid = false
-        response.message = 'digitable line is null'
     }
 
     return response
 }
 
-const separateDigitableLine = digitableLine => {
-    const sizeBlocks = Object.values(LENGTHS_BLOCKS)
-
-    return sizeBlocks.map((size, index) => {
-        const start = sizeBlocks.slice(0, index).reduce((acc, val) => acc + val, 0)
-        return digitableLine.substr(start, size)
+const getPossibleDvsFromDigitableLine = digitableLine => {
+    const blocks = separateDigitableLine({
+        sizeBlocks: Object.values(LENGTHS_BLOCKS),
+        digitableLine: digitableLine
     })
-}
-
-const calculateExpirationDateFactor = digitableLineSeparated => {
-    const dateExpiration = addDays({
-        startDate: BASE_DATE,
-        numberDaysToAdd: Number(getExpirationDateFactor(digitableLineSeparated[digitableLineSeparated.length - 1]))
-    })
-    return formatISO(dateExpiration)
-}
-
-const getExpirationDateFactor = fifthBlock => {
-    return fifthBlock.substring(0, 4)
-}
-
-const checkValidatorDigitModule10 = blocks => {
-    const possibleDvs = []
-    const calculatedDvs = []
-    const multipliedsBlocks = []
-    let multiplier = 1
-
-    for (let block of blocks) {
-        const multipliedBlock = []
-        possibleDvs.push(Number(block.substr(block.length - 1)))
-        block = block.slice(0, -1)
-
-        for (const char of block) {
-            multiplier = multiplier === 1 ? 2 : 1
-            multipliedBlock.push(...breakInDigits(char * multiplier))
+    const dvs = blocks.map((value, index) => {
+        if ([0, 1, 2].includes(index)) {
+            return Number(value.substr(value.length - 1))
         }
+    }).filter(n => n !== undefined)
 
-        multipliedsBlocks.push(multipliedBlock)
+    return {
+        possibleDvs: dvs,
+        blocks: blocks
+    }
+}
+
+const checkIfDvsItsCorrect = ({ digitableLineBreaked, module, possibleDvs }) => {
+    let multiplier = 0
+    let sumBlock = 0
+    const dvs = []
+
+    for (let block of digitableLineBreaked) {
+        if (module === 10) {
+            block = block.slice(0, -1)
+            const results = calculateModule10({
+                digitableLine: block,
+                multiplier: multiplier === 0 ? 2 : multiplier,
+                sumBlock: sumBlock
+            })
+
+            multiplier = results.multiplier
+
+            const nextTen = Math.ceil(results.sumBlock / 10) * 10
+            dvs.unshift(nextTen - results.sumBlock === 10 ? 0 : nextTen - results.sumBlock)
+        } else if (module === 11) {
+            const results = calculateModule11({
+                digitableLine: block,
+                multiplier: multiplier === 0 ? 2 : multiplier,
+                sumBlock: sumBlock
+            })
+
+            const rest = results.sumBlock % 11
+            const sub = 11 - rest
+
+            if (sub === 0 || sub === 10 || sub === 11) {
+                dvs.push(0)
+            } else {
+                dvs.push(sub)
+            }
+        }
     }
 
-    for (const block of multipliedsBlocks) {
-        const sumBlock = block.reduce((acc, value) => acc + value, 0)
-        const nextTen = Math.ceil(sumBlock / 10) * 10
-        calculatedDvs.push(nextTen - sumBlock === 10 ? 0 : nextTen - sumBlock)
+    return dvs.every((value, index) => value === possibleDvs[index])
+}
+
+const calculateModule10 = ({ digitableLine, multiplier = 2, sumBlock = 0 }) => {
+    for (let i = digitableLine.length; i >= 1; i--) {
+        const numberMultiplied = breakInDigits(Number(digitableLine[i - 1]) * multiplier)
+        sumBlock += numberMultiplied.reduce((acc, value) => acc + value, 0)
+        multiplier = multiplier === 2 ? 1 : 2
     }
 
     return {
-        possibleDvs,
-        calculatedDvs,
-        dvsAreEquals: calculatedDvs.every((dv, index) => dv === possibleDvs[index])
+        multiplier: multiplier,
+        sumBlock: sumBlock
     }
 }
 
-const breakInDigits = number => {
-    const digits = number.toString().split('')
-    return digits.map(n => Number(n))
+const calculateModule11 = ({ digitableLine, multiplier = 2, sumBlock = 0 }) => {
+    for (let i = digitableLine.length; i >= 1; i--) {
+        const numberMultiplied = Number(digitableLine[i - 1]) * multiplier
+        sumBlock += numberMultiplied
+        multiplier = multiplier === 9 ? 2 : multiplier + 1
+    }
+
+    return {
+        multiplier: multiplier,
+        sumBlock: sumBlock
+    }
 }
 
-const assembleBarCode = separatedDigitableLine => {
-    const blocks = []
-    let possibleDv, value = null
+const assembleInformationsByDigitableLine = digitableLine => {
+    const { barCodeWithoutDv, possibleDv } = assembleBarCodeAndGetDv(digitableLine)
 
-    for (let [indexBlock, block] of separatedDigitableLine.entries()) {
+    if (checkIfDvsItsCorrect({
+        digitableLineBreaked: [barCodeWithoutDv],
+        module: 11,
+        possibleDvs: [possibleDv]
+    })) {
+        const { amount, expirationDate } = assembleAmountAndExpirationDateFromDigitableLine(digitableLine)
+        const barCode = `${barCodeWithoutDv.substr(0, 4)}${possibleDv}${barCodeWithoutDv.substr(4, barCodeWithoutDv.length - 1)}`
+
+        return {
+            barCode: barCode,
+            amount: amount,
+            expirationDate: expirationDate
+        }
+    }
+
+    return false
+}
+
+const assembleBarCodeAndGetDv = digitableLine => {
+    const blocks = []
+    let possibleDv = null
+
+    for (let [indexBlock, block] of digitableLine.entries()) {
         if (block.length === 10) {
             const codeBank = block.substr(0, 3)
             const codeCurrency = block.substr(3, 1)
@@ -146,7 +172,6 @@ const assembleBarCode = separatedDigitableLine => {
                 value: expirationDateFactor
             })
             blocks.push({ name: 'valueBarCode', value: valueBarCode })
-            value = numberToReal(Number(valueBarCode).toString())
         }
     }
 
@@ -167,37 +192,32 @@ const assembleBarCode = separatedDigitableLine => {
         }
     }).filter((n) => n).join('')
 
-    let multiplier = 2
-
-    let resultMultiplierBarCode = 0
-
-    for (let i = barCodeWithoutDv.length; i >= 1; i--) {
-        const num = Number(barCodeWithoutDv[i - 1])
-        resultMultiplierBarCode += num * multiplier
-        multiplier = multiplier === 9 ? 2 : multiplier + 1
+    return {
+        barCodeWithoutDv: barCodeWithoutDv,
+        possibleDv: possibleDv
     }
+}
 
-    let possibleDvBarCode = (11 - (resultMultiplierBarCode % 11))
+const assembleAmountAndExpirationDateFromDigitableLine = digitableLine => {
+    const block = digitableLine[digitableLine.length - 1]
+    const dateExpiration = addDays({
+        startDate: BASE_DATE,
+        numberDaysToAdd: Number(getExpirationDateFactor(block))
+    })
 
-    if (possibleDvBarCode === 0 || possibleDvBarCode === 10 || possibleDvBarCode === 11) {
-        possibleDvBarCode = 1
+    return {
+        amount: numberToReal(Number(block.substr(4, block.length - 1)).toString()),
+        expirationDate: formatISO(dateExpiration)
     }
+}
 
-    if (possibleDv === possibleDvBarCode) {
-        barCodeSequence.splice(2, 0, 'verifierBarCode')
+const getExpirationDateFactor = fifthBlock => {
+    return fifthBlock.substring(0, 4)
+}
 
-        return {
-            barCode: barCodeSequence.map((name) => {
-                const block = blocks.find((b) => b.name === name)
-                if (block) {
-                    return block.value
-                }
-            }).filter((n) => n).join(''),
-            value: value
-        }
-    }
-
-    return null
+const breakInDigits = number => {
+    const digits = number.toString().split('')
+    return digits.map(n => Number(n))
 }
 
 const numberToReal = number => {
